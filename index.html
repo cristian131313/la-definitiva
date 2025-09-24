@@ -2,32 +2,50 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Seguimiento GPS con Excel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguimiento GPS Manual</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
+      margin: 15px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+    .botones {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
     }
     button {
-      margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
+      width: 90%;
+      max-width: 300px;
+      padding: 15px;
+      font-size: 18px;
+      border-radius: 10px;
       border: none;
       cursor: pointer;
     }
-    #iniciar { background-color: #4CAF50; color: white; }
+    #tomar { background-color: #2196F3; color: white; }
     #finalizar { background-color: #f44336; color: white; }
+    .tabla-container {
+      overflow-x: auto;
+    }
     table {
-      margin-top: 20px;
       border-collapse: collapse;
       width: 100%;
+      min-width: 350px;
     }
     th, td {
       border: 1px solid #333;
       padding: 8px;
       text-align: center;
+      font-size: 14px;
     }
     th {
       background-color: #f2f2f2;
@@ -36,11 +54,13 @@
 </head>
 <body>
   <h1>Seguimiento de coordenadas</h1>
-  <p>Intervalo actual: <strong>1 segundo</strong></p>
-  <button id="iniciar">Iniciar seguimiento</button>
-  <button id="finalizar" disabled>Finalizar seguimiento</button>
 
-  <div id="tablaResultados">
+  <div class="botones">
+    <button id="tomar">📍 Tomar dato</button>
+    <button id="finalizar">📂 Finalizar y exportar Excel</button>
+  </div>
+
+  <div class="tabla-container">
     <table id="tabla">
       <thead>
         <tr>
@@ -54,15 +74,12 @@
   </div>
 
   <script>
-    let intervalo = 5000; // 🔹 Cada 1 segundo
-    let intervaloId;
     let datos = [];
-
-    const btnIniciar = document.getElementById("iniciar");
+    const btnTomar = document.getElementById("tomar");
     const btnFinalizar = document.getElementById("finalizar");
     const cuerpoTabla = document.querySelector("#tabla tbody");
 
-    function obtenerCoordenadas() {
+    function tomarCoordenada() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
           const fecha = new Date();
@@ -74,7 +91,7 @@
 
           datos.push(fila);
 
-          // Agregar fila en la tabla
+          // Agregar fila a la tabla
           const nuevaFila = `
             <tr>
               <td>${fila["Fecha y Hora"]}</td>
@@ -83,31 +100,14 @@
             </tr>`;
           cuerpoTabla.innerHTML += nuevaFila;
         }, (error) => {
-          console.error("Error al obtener coordenadas:", error);
+          alert("Error al obtener coordenadas: " + error.message);
         });
       } else {
         alert("La geolocalización no es compatible con este navegador.");
       }
     }
 
-    btnIniciar.addEventListener("click", () => {
-      datos = [];
-      cuerpoTabla.innerHTML = "";
-      intervaloId = setInterval(obtenerCoordenadas, intervalo);
-      btnIniciar.disabled = true;
-      btnFinalizar.disabled = false;
-      alert("Seguimiento iniciado.");
-    });
-
-    btnFinalizar.addEventListener("click", () => {
-      clearInterval(intervaloId);
-      btnIniciar.disabled = false;
-      btnFinalizar.disabled = true;
-      alert("Seguimiento finalizado. Se descargará el archivo Excel.");
-      descargarExcel();
-    });
-
-    function descargarExcel() {
+    function finalizarTarea() {
       if (datos.length === 0) {
         alert("No hay datos para exportar.");
         return;
@@ -119,7 +119,9 @@
 
       XLSX.writeFile(wb, "coordenadas.xlsx");
     }
+
+    btnTomar.addEventListener("click", tomarCoordenada);
+    btnFinalizar.addEventListener("click", finalizarTarea);
   </script>
 </body>
 </html>
-
