@@ -81,17 +81,33 @@
     let datos = [];
     let tramoActual = 1;
     let vueltaActual = 1;
+    let ultimaPosicion = null; // 📌 Aquí guardamos la última coordenada disponible
     const cuerpoTabla = document.querySelector("#tablaDatos tbody");
 
     // 🎨 Colores por vuelta
     const colores = ["red", "blue", "green", "orange", "purple", "brown"];
-    const rutas = {}; // almacenará polylines por vuelta
+    const rutas = {};
 
     // Inicializar mapa
     const map = L.map("map").setView([0, 0], 2);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors"
     }).addTo(map);
+
+    // 📡 Mantener el GPS activo con watchPosition
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        ultimaPosicion = pos; // Guardamos siempre la última posición
+      },
+      (error) => {
+        alert("Error al activar GPS: " + error.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
 
     document.getElementById("btnTramo").addEventListener("click", () => {
       tramoActual++;
@@ -105,57 +121,46 @@
     });
 
     document.getElementById("btnTomar").addEventListener("click", () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const fecha = new Date();
-          const fila = {
-            "Vuelta": "Vuelta " + vueltaActual,
-            "Tramo": "Tramo " + tramoActual,
-            "Hora": fecha.toLocaleTimeString(),
-            "Latitud": pos.coords.latitude,
-            "Longitud": pos.coords.longitude
-          };
+      if (!ultimaPosicion) {
+        alert("Esperando señal GPS...");
+        return;
+      }
 
-          datos.push(fila);
+      const fecha = new Date();
+      const fila = {
+        "Vuelta": "Vuelta " + vueltaActual,
+        "Tramo": "Tramo " + tramoActual,
+        "Hora": fecha.toLocaleTimeString(),
+        "Latitud": ultimaPosicion.coords.latitude,
+        "Longitud": ultimaPosicion.coords.longitude
+      };
 
-          // Agregar a tabla
-          const nuevaFila = `
-            <tr>
-              <td>${fila["Vuelta"]}</td>
-              <td>${fila["Tramo"]}</td>
-              <td>${fila["Hora"]}</td>
-              <td>${fila["Latitud"]}</td>
-              <td>${fila["Longitud"]}</td>
-            </tr>`;
-          cuerpoTabla.innerHTML += nuevaFila;
+      datos.push(fila);
 
-          // Agregar al mapa
-          const punto = [fila["Latitud"], fila["Longitud"]];
-          const color = colores[(vueltaActual - 1) % colores.length];
+      // Agregar a tabla
+      const nuevaFila = `
+        <tr>
+          <td>${fila["Vuelta"]}</td>
+          <td>${fila["Tramo"]}</td>
+          <td>${fila["Hora"]}</td>
+          <td>${fila["Latitud"]}</td>
+          <td>${fila["Longitud"]}</td>
+        </tr>`;
+      cuerpoTabla.innerHTML += nuevaFila;
 
-          // Crear polyline por vuelta si no existe
-          if (!rutas[vueltaActual]) {
-            rutas[vueltaActual] = L.polyline([], { color: color }).addTo(map);
-          }
+      // Agregar al mapa
+      const punto = [fila["Latitud"], fila["Longitud"]];
+      const color = colores[(vueltaActual - 1) % colores.length];
 
-          rutas[vueltaActual].addLatLng(punto);
+      if (!rutas[vueltaActual]) {
+        rutas[vueltaActual] = L.polyline([], { color: color }).addTo(map);
+      }
+      rutas[vueltaActual].addLatLng(punto);
 
-          // Marcar el punto en el mapa
-          L.circleMarker(punto, { radius: 6, color: color }).addTo(map)
-            .bindPopup(`${fila["Vuelta"]} - ${fila["Tramo"]}<br>${fila["Hora"]}`);
+      L.circleMarker(punto, { radius: 6, color: color }).addTo(map)
+        .bindPopup(`${fila["Vuelta"]} - ${fila["Tramo"]}<br>${fila["Hora"]}`);
 
-          // Centrar mapa en el último punto
-          map.setView(punto, 16);
-        },
-        (error) => {
-          alert("Error al obtener ubicación: " + error.message);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        }
-      );
+      map.setView(punto, 16);
     });
 
     document.getElementById("btnFinalizar").addEventListener("click", () => {
